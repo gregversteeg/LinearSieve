@@ -57,12 +57,13 @@ class Sieve(object):
     [2] Greg Ver Steeg and Aram Galstyan. "The Linear Information Sieve" [In progress]
     """
 
-    def __init__(self, n_hidden=2, max_iter=200, noise=0.1, fwer=None, tol=1e-8, gaussianize=False,
+    def __init__(self, n_hidden=2, max_iter=5000, noise=0.1, fwer=None, repeat=1, tol=1e-8, gaussianize=False,
                  verbose=False, seed=None, **kwargs):
         self.n_hidden = n_hidden  # Number of latent factors to learn
         self.max_iter = max_iter  # Iterations at each layer
         self.noise = noise  # Fundamental limit on noise of Y
         self.fwer = fwer  # Optionally, we can subtract out remainder info only for "significantly" correlated vars.
+        self.repeat = repeat  # For each factor, repeat with different random IC and take best solution.
         self.tol = tol  # Check for convergence
         self.verbose = verbose
         np.random.seed(seed)  # Set seed for deterministic results
@@ -151,7 +152,7 @@ class Sieve(object):
 
     def transform(self, x, remainder=False, level=-1):
         """Transform an array of inputs, x, into an array of k latent factors, Y.
-            Optionally, you can get the remainder information and/or stop at a specified level."""
+            Optionally, you can get the remainder information and/or stop at a specified level of the sieve."""
         x = np.asarray(x, dtype=float)
         ns, nv = x.shape
         assert self.nv == nv, "Incorrect number of variables in input, %d instead of %d" % (nv, self.nv)
@@ -176,7 +177,9 @@ class Sieve(object):
         nv = self.nv
         x = np.zeros((len(ys), nv))
         for j in range(self.n_hidden - 1, -1, -1):
-            x += self.moments[j]['X_i Y'][:nv] / (self.moments[j]["Y^2"] - self.noise**2) * ys[:, j:j+1]
+            for i in self.alpha[j]:
+                if i < nv:
+                    x[:, i] += self.moments[j]['X_i Y'][i] / (self.moments[j]["Y^2"] - self.noise**2) * ys[:, j]
         return x
 
     def invert(self, xbar):
@@ -194,9 +197,9 @@ class Sieve(object):
         m["d"] = np.sum(m["r^2"] / (1. - m["r^2"]))
 
 
-def significance_test(rs, n, fwer, strategy='holm-bonferroni'):
+def significance_test(rs, n, fwer, strategy='naive'):
     """Return the indices of significant correlations, to control the family-wise error rate (fwer)."""
-    if fwer==1 or fwer is None:
+    if fwer >= 1 or fwer is None:
         return np.arange(len(rs))
     ts = rs * np.sqrt(float(n-2) / (1 - rs**2))  # For student t-test
     pvals = 2 * t.sf(np.abs(ts), n - 2)

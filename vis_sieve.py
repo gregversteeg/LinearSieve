@@ -7,7 +7,7 @@ from itertools import combinations
 import numpy as np
 import pylab
 import networkx as nx
-
+from scipy.stats import norm, rankdata  # Used for Gaussianizing data
 
 # Main visualization routines
 
@@ -312,6 +312,13 @@ def safe_open(filename, mode):
     return open(filename, mode)
 
 
+def gaussianize(x):
+    """Return an empirically gaussianized version of either 1-d or 2-d data(processed column-wise)"""
+    if len(x.shape) == 1:
+        return norm.ppf((rankdata(x) - 0.5) / len(x))
+    return np.array([norm.ppf((rankdata(x_i) - 0.5) / len(x_i)) for x_i in x.T]).T
+
+
 if __name__ == '__main__':
     # Command line interface
     # Sample commands:
@@ -343,11 +350,18 @@ if __name__ == '__main__':
     group.add_option("-d", "--delimiter",
                      action="store", dest="delimiter", type="string", default=",",
                      help="Separator between entries in the data, default is ','.")
+    group.add_option("-g", "--gaussianize",
+                     action="store_true", dest="gaussianize", default=False,
+                     help="Preprocess data with empirical gaussianization.")
     parser.add_option_group(group)
 
     group = OptionGroup(parser, "Sieve Options")
     group.add_option("-k", "--n_hidden", dest="n_hidden", type="int", default=2,
                      help="Latent factors take values 0, 1..k. Default k=2")
+    group.add_option("-r", "--repeat", dest="repeat", type="int", default=1,
+                     help="Number of repeats for each factor to find best. Default = 1")
+    group.add_option("-w", "--fwer", dest="fwer", type="float", default=1,
+                     help="Do hyp. testing with this FWER. Default 1 implies not hyp. testing. 0.05 is a good option.")
     parser.add_option_group(group)
 
     group = OptionGroup(parser, "Output Options")
@@ -376,7 +390,7 @@ if __name__ == '__main__':
     #Load data from csv file
     filename = args[0]
     with open(filename, 'rU') as csvfile:
-        reader = csv.reader(csvfile, delimiter=' ') #options.delimiter)
+        reader = csv.reader(csvfile, delimiter=options.delimiter)
         if options.nc:
             variable_names = None
         else:
@@ -406,12 +420,16 @@ if __name__ == '__main__':
     if verbose:
         print '\nData summary: X has %d rows and %d columns' % X.shape
         print 'Variable names are: ' + ','.join(map(str, list(enumerate(variable_names))))
+        print 'first row', X[0]
+
+    if options.gaussianize:
+        X = gaussianize(X)
 
     # Run Sieve on data
     if verbose:
         print 'Getting Sieve results'
     if not options.regraph:
-        s = sieve.Sieve(n_hidden=options.n_hidden, verbose=verbose, missing_values=options.missing).fit(X)
+        s = sieve.Sieve(n_hidden=options.n_hidden, verbose=verbose, fwer=options.fwer, repeat=options.repeat).fit(X)
         cPickle.dump(s, open(options.output + '_sieve.dat', 'w'))
     else:
         s = cPickle.load(options.output + '_sieve.dat')
