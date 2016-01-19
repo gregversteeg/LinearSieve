@@ -11,7 +11,7 @@ import networkx as nx
 
 # Main visualization routines
 
-def vis_rep(sieve, data, row_label=None, column_label=None, prefix='corex_output'):
+def vis_rep(sieve, data, row_label=None, column_label=None, prefix='corex_output', max_edges=200):
     """Various visualizations and summary statistics for a one layer representation"""
     if column_label is None:
         column_label = map(str, range(data.shape[1]))
@@ -30,7 +30,7 @@ def vis_rep(sieve, data, row_label=None, column_label=None, prefix='corex_output
     print 'Pairwise plots among high TC variables in "relationships"'
     plot_top_relationships(data, sieve.alpha, sieve.mis, column_label, labels, prefix=prefix)
 
-    vis_hierarchy(sieve, column_label, prefix=prefix)
+    vis_hierarchy(sieve, column_label, prefix=prefix, max_edges=max_edges)
 
 
 def output_groups(tcs, alpha, mis, column_label, thresh=0, prefix=''):
@@ -63,6 +63,9 @@ def plot_convergence(tc_history, prefix=''):
     for h_j in tc_history:
         pylab.plot(h_j)
     pylab.xlabel('# iterations')
+    pylab.ylabel('TC(X;Y)')
+    finaltc = sum(h_j[-1] for h_j in tc_history)
+    pylab.suptitle('Total TC for %d signals: %0.3f' % (len(tc_history), finaltc), fontsize=12)
     filename = prefix + '/text_files/convergence.pdf'
     if not os.path.exists(os.path.dirname(filename)):
         os.makedirs(os.path.dirname(filename))
@@ -120,7 +123,7 @@ def plot_rels(data, labels=None, colors=None, outfile="rels", latent=None, alpha
 
 # Hierarchical graph visualization utilities
 
-def vis_hierarchy(sieve, column_label, max_edges=100, prefix=''):
+def vis_hierarchy(sieve, column_label, max_edges=200, prefix=''):
     """Visualize a hierarchy of representations."""
     import textwrap
     column_label = map(lambda q: '\n'.join(textwrap.wrap(q, width=20)), column_label)
@@ -148,7 +151,8 @@ def vis_hierarchy(sieve, column_label, max_edges=100, prefix=''):
 
     # Display pruned version
     h = g.copy()  # trim(g.copy(), max_parents=max_parents, max_children=max_children)
-    edge2pdf(h, prefix + '/graphs/graph_all', labels='label', directed=True, makepdf=True)
+    h.remove_edges_from(sorted(h.edges(data=True), key=lambda q: q[2]['weight'])[:-max_edges])
+    edge2pdf(h, prefix + '/graphs/graph_%d' % max_edges, labels='label', directed=True, makepdf=True)
 
     # Display tree version
     tree = g.copy()
@@ -354,7 +358,7 @@ if __name__ == '__main__':
                      action="store_true", dest="verbose", default=False,
                      help="Print rich outputs while running.")
     group.add_option("-e", "--edges",
-                     action="store", dest="max_edges", type="int", default=100,
+                     action="store", dest="max_edges", type="int", default=200,
                      help="Show at most this many edges in graphs.")
     group.add_option("-q", "--regraph",
                      action="store_true", dest="regraph", default=False,
@@ -372,7 +376,7 @@ if __name__ == '__main__':
     #Load data from csv file
     filename = args[0]
     with open(filename, 'rU') as csvfile:
-        reader = csv.reader(csvfile, delimiter=options.delimiter)
+        reader = csv.reader(csvfile, delimiter=' ') #options.delimiter)
         if options.nc:
             variable_names = None
         else:
@@ -413,6 +417,6 @@ if __name__ == '__main__':
         s = cPickle.load(options.output + '_sieve.dat')
 
     # This line outputs plots showing relationships at the first layer
-    vis_rep(s, X, row_label=sample_names, column_label=variable_names, prefix=options.output)
+    vis_rep(s, X, row_label=sample_names, column_label=variable_names, prefix=options.output, max_edges=options.max_edges)
     # This line outputs a hierarchical networks structure in a .dot file in the "graphs" folder
     # And it tries to compile the dot file into a pdf using the command line utility sfdp (part of graphviz)

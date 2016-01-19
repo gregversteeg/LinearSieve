@@ -10,7 +10,7 @@ import vis_sieve as vs
 from scipy.stats import kendalltau
 
 
-verbose = True
+verbose = False
 np.set_printoptions(precision=3, suppress=True, linewidth=200)
 seed = 1
 np.random.seed(seed)
@@ -38,13 +38,13 @@ def get_r(s1, s2):
 
 def observed(s):
     # Generate a randomly sized group of variables weakly correlated to
-    bimodal_s = s + 0.5 * (s > 0.33).astype(float)  # occasional unbalanced, bimodal
+    bimodal_s = s + 0.5 * (s > 0.2).astype(float)  # occasional unbalanced, bimodal
     n = np.random.randint(3, 16)
     ns = len(s)
 
     output = []
     for i in range(n):
-        noise_mag = np.random.choice([0.1, 0.2, 0.3])
+        noise_mag = np.random.choice([0.2, 0.4, 0.6])
         signal_mag = np.random.choice([0.1, 0.5, 1])
         if np.random.random() < 0.05:
             this_s = bimodal_s
@@ -84,7 +84,6 @@ for loop_i in range(1):
     print 'Number Ok, %d / %d' % (np.sum(scores > 0.5), len(scores))
     print 'total score, %0.3f' % np.sum(scores)
 
-print 'precision', out.precision
 names = []
 for j, group in enumerate(data_groups):
     color = colors[j]
