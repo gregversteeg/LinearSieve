@@ -126,7 +126,7 @@ class Sieve(object):
             m = self.moments[j]  # Abbreviation
             nv_k = nv + j  # Number of variables on this level
             m["X_i^2"] = np.einsum("li,li->i", x[:, :nv_k], x[:, :nv_k]) / ns  # Variance
-            self.ws[j][:nv_k] = np.random.randn(nv_k) * self.noise**2 / np.sqrt(m["X_i^2"])  # Random initialization
+            self.ws[j][:nv_k] = 2 * np.random.randn(nv_k) * self.noise**2 / np.sqrt(m["X_i^2"])  # Random initialization
             self.update_parameters(x, j)  # Update moments and normalize w
             for i_loop in range(self.max_iter):
                 self.ws[j, :nv_k] = self.noise**2 * m["X_i Y"] / (m["X_i^2"] * m["Y^2"] - m["X_i Y"]**2)  # Update w, Eq. 9 in paper
