@@ -15,7 +15,7 @@ class Sieve(object):
     Conventions
     ----------
     Code follows sklearn naming/style (e.g. fit(X) to train).
-    We use Einstein summation (np.einsum) for all matrix operations (very fast in numpy).
+    We use Einstein summation (np.einsum) for most matrix operations (very fast in numpy).
     The index convention is as follows:
         i = 1...n_variables (may be number of variables at level k)
         j = 1...n_hidden, used for indexing latent factors
@@ -54,7 +54,7 @@ class Sieve(object):
     References
     ----------
     [1] Greg Ver Steeg and Aram Galstyan. "The Information Sieve", 2015.
-    [2] Greg Ver Steeg and Aram Galstyan. "The Linear Information Sieve" [In progress]
+    [2] Greg Ver Steeg, Shuyang Gao, and Aram Galstyan. "The Information Sieve for Continuous Variables" [In progress]
     """
 
     def __init__(self, n_hidden=2, max_iter=5000, noise=0.1, fwer=None, repeat=1, tol=1e-8, gaussianize=False,
@@ -85,12 +85,12 @@ class Sieve(object):
     def mi_j(self, j):
         """MIs for level j"""
         with np.errstate(all='ignore'):
-            return np.where(self.moments[j]["X_i^2"] > 0, -0.5 * np.log(1 - self.moments[j]["r^2"]), 0)
+            return np.where(self.moments[j]["X_i^2"] > 0, -0.5 * np.log1p(- self.moments[j]["r^2"]), 0)
 
     def tc_j(self, j):
         """TC at level j. Actually only a lower bound."""
         mis = self.mi_j(j)
-        return np.sum(mis) - 0.5 * np.log(self.moments[j]["Y^2"] / self.noise**2)  # The objective at each level
+        return np.sum(mis) - 0.5 * np.log(self.moments[j]["Y^2"]) + np.log(self.noise)  # The objective at each level
 
     @property
     def mis(self):
@@ -126,10 +126,10 @@ class Sieve(object):
             m = self.moments[j]  # Abbreviation
             nv_k = nv + j  # Number of variables on this level
             m["X_i^2"] = np.einsum("li,li->i", x[:, :nv_k], x[:, :nv_k]) / ns  # Variance
-            self.ws[j][:nv_k] = 2 * np.random.randn(nv_k) * self.noise**2 / np.sqrt(m["X_i^2"])  # Random initialization
+            self.ws[j][:nv_k] = np.random.randn(nv_k) * self.noise**2 / np.sqrt(m["X_i^2"])  # Random initialization
             self.update_parameters(x, j)  # Update moments and normalize w
             for i_loop in range(self.max_iter):
-                self.ws[j, :nv_k] = self.noise**2 * m["X_i Y"] / (m["X_i^2"] * m["Y^2"] - m["X_i Y"]**2)  # Update w, Eq. 9 in paper
+                self.ws[j, :nv_k] = 0.5 * (self.ws[j, :nv_k] + self.noise**2 * m["X_i Y"] / (m["X_i^2"] * m["Y^2"] - m["X_i Y"]**2))  # Update w, Eq. 9 in paper
                 self.update_parameters(x, j)  # Update moments
 
                 self.tc_history[j].append(self.tc_j(j))
@@ -190,11 +190,11 @@ class Sieve(object):
         """Update moments based on the weights."""
         nv_k = self.nv + j  # Number of variables on this level
         m = self.moments[j]  # Update moments, abbreviate for readability
-        y = np.dot(x, self.ws[j]).clip(-1e6, 1e6)  # If Y is getting huge, there is a perfect linear rel. in data
+        assert np.max(np.abs(self.ws)) < 1e6, 'If w is getting huge, a perfect linear rel. is causing divergence.'
+        y = np.dot(x, self.ws[j])
         m["Y^2"] = var(y) + self.noise**2  # <Y^2>
         m["X_i Y"] = np.dot(x.T, y)[:nv_k] / len(y)
-        m["r^2"] = (m["X_i Y"]**2 / (m["X_i^2"] * m["Y^2"])).clip(0, 1 - 1e-10)
-        m["d"] = np.sum(m["r^2"] / (1. - m["r^2"]))
+        m["r^2"] = (m["X_i Y"]**2 / (m["X_i^2"] * m["Y^2"]))  # .clip(0, 1 - 1e-10)
 
 
 def significance_test(rs, n, fwer, strategy='naive'):
