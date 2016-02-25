@@ -57,7 +57,7 @@ class Sieve(object):
     [2] Greg Ver Steeg, Shuyang Gao, and Aram Galstyan. "The Information Sieve for Continuous Variables" [In progress]
     """
 
-    def __init__(self, n_hidden=2, max_iter=5000, noise=0.1, fwer=None, repeat=1, tol=1e-8, gaussianize=False,
+    def __init__(self, n_hidden=2, max_iter=50000, noise=0.1, fwer=None, repeat=1, tol=1e-7, gaussianize=False,
                  verbose=False, seed=None, **kwargs):
         self.n_hidden = n_hidden  # Number of latent factors to learn
         self.max_iter = max_iter  # Iterations at each layer
@@ -125,11 +125,12 @@ class Sieve(object):
             self.moments.append({})  # Dictionary of moments for this level
             m = self.moments[j]  # Abbreviation
             nv_k = nv + j  # Number of variables on this level
-            m["X_i^2"] = np.einsum("li,li->i", x[:, :nv_k], x[:, :nv_k]) / ns  # Variance
+            m["X_i^2"] = (np.einsum("li,li->i", x[:, :nv_k], x[:, :nv_k]) / ns).clip(1e-10)  # Variance
             self.ws[j][:nv_k] = np.random.randn(nv_k) * self.noise**2 / np.sqrt(m["X_i^2"])  # Random initialization
             self.update_parameters(x, j)  # Update moments and normalize w
             for i_loop in range(self.max_iter):
-                self.ws[j, :nv_k] = 0.5 * (self.ws[j, :nv_k] + self.noise**2 * m["X_i Y"] / (m["X_i^2"] * m["Y^2"] - m["X_i Y"]**2))  # Update w, Eq. 9 in paper
+                # self.ws[j, :nv_k] = 0.5 * (self.ws[j, :nv_k] + self.noise**2 * m["X_i Y"] / (m["X_i^2"] * m["Y^2"] - m["X_i Y"]**2))  # In one or two scenarios, this update worked better
+                self.ws[j, :nv_k] = self.noise**2 * m["X_i Y"] / (m["X_i^2"] * m["Y^2"] - m["X_i Y"]**2)  # Update w, Eq. 9 in paper
                 self.update_parameters(x, j)  # Update moments
 
                 self.tc_history[j].append(self.tc_j(j))
@@ -190,7 +191,9 @@ class Sieve(object):
         """Update moments based on the weights."""
         nv_k = self.nv + j  # Number of variables on this level
         m = self.moments[j]  # Update moments, abbreviate for readability
-        assert np.max(np.abs(self.ws)) < 1e6, 'If w is getting huge, a perfect linear rel. is causing divergence.'
+        if np.max(np.abs(self.ws)) > 1e10:
+            print 'Warning: if w is getting huge, a perfect linear rel. is causing divergence.'
+            self.ws = self.ws.clip(-1e10, 1e10)
         y = np.dot(x, self.ws[j])
         m["Y^2"] = var(y) + self.noise**2  # <Y^2>
         m["X_i Y"] = np.dot(x.T, y)[:nv_k] / len(y)
