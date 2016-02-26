@@ -126,21 +126,29 @@ class Sieve(object):
             m = self.moments[j]  # Abbreviation
             nv_k = nv + j  # Number of variables on this level
             m["X_i^2"] = (np.einsum("li,li->i", x[:, :nv_k], x[:, :nv_k]) / (ns-1)).clip(1e-10)  # Variance
-            self.ws[j][:nv_k] = np.random.randn(nv_k) * self.noise**2 / np.sqrt(m["X_i^2"])  # Random initialization
-            self.update_parameters(x, j)  # Update moments and normalize w
-            for i_loop in range(self.max_iter):
-                # self.ws[j, :nv_k] = 0.5 * (self.ws[j, :nv_k] + self.noise**2 * m["X_i Y"] / (m["X_i^2"] * m["Y^2"] - m["X_i Y"]**2))  # In one or two scenarios, this update worked better
-                self.ws[j, :nv_k] = self.noise**2 * m["X_i Y"] / (m["X_i^2"] * m["Y^2"] - m["X_i Y"]**2)  # Update w, Eq. 9 in paper
-                self.update_parameters(x, j)  # Update moments
 
-                self.tc_history[j].append(self.tc_j(j))
-                if self.verbose:
-                    print 'TC = %0.5f' % self.tc_history[j][-1]
-                if np.abs(self.tc_history[j][-1] - self.tc_history[j][-2]) < self.tol:
-                    break  # Stop if converged
-            else:
-                if self.verbose:
-                    print "Warning: Convergence was not achieved in %d iterations. Increase max_iter." % self.max_iter
+            best_tc = -1
+            for _ in range(self.repeat):
+                self.ws[j][:nv_k] = np.random.randn(nv_k) * self.noise**2 / np.sqrt(m["X_i^2"])  # Random initialization
+                self.update_parameters(x, j)  # Update moments and normalize w
+                for i_loop in range(self.max_iter):
+                    # self.ws[j, :nv_k] = 0.5 * (self.ws[j, :nv_k] + self.noise**2 * m["X_i Y"] / (m["X_i^2"] * m["Y^2"] - m["X_i Y"]**2))  # In one or two scenarios, this update worked better
+                    self.ws[j, :nv_k] = self.noise**2 * m["X_i Y"] / (m["X_i^2"] * m["Y^2"] - m["X_i Y"]**2)  # Update w, Eq. 9 in paper
+                    self.update_parameters(x, j)  # Update moments
+
+                    self.tc_history[j].append(self.tc_j(j))
+                    if self.verbose:
+                        print 'TC = %0.5f' % self.tc_history[j][-1]
+                    if np.abs(self.tc_history[j][-1] - self.tc_history[j][-2]) < self.tol:
+                        break  # Stop if converged
+                else:
+                    if self.verbose:
+                        print "Warning: Convergence was not achieved in %d iterations. Increase max_iter." % self.max_iter
+                if self.tc_j(j) > best_tc:
+                    best_w = np.copy(self.ws[j, :nv_k])
+                    best_tc = self.tc_j(j)
+            self.ws[j][:nv_k] = best_w
+            self.update_parameters(x, j)  # Update moments and normalize w
 
             self.alpha.append(significance_test(m["r^2"], ns, self.fwer))
             x[:, nv_k] = np.dot(self.ws[j], x.T)  # This is just Y
