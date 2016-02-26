@@ -125,7 +125,7 @@ class Sieve(object):
             self.moments.append({})  # Dictionary of moments for this level
             m = self.moments[j]  # Abbreviation
             nv_k = nv + j  # Number of variables on this level
-            m["X_i^2"] = (np.einsum("li,li->i", x[:, :nv_k], x[:, :nv_k]) / ns).clip(1e-10)  # Variance
+            m["X_i^2"] = (np.einsum("li,li->i", x[:, :nv_k], x[:, :nv_k]) / (ns-1)).clip(1e-10)  # Variance
             self.ws[j][:nv_k] = np.random.randn(nv_k) * self.noise**2 / np.sqrt(m["X_i^2"])  # Random initialization
             self.update_parameters(x, j)  # Update moments and normalize w
             for i_loop in range(self.max_iter):
@@ -218,4 +218,4 @@ def significance_test(rs, n, fwer, strategy='naive'):
 
 def var(y):
     # 4 times faster than numpy.std!
-    return np.dot(y, y) / len(y)
+    return np.dot(y, y) / (len(y)-1)
