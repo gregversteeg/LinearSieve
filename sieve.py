@@ -127,7 +127,7 @@ class Sieve(object):
             nv_k = nv + j  # Number of variables on this level
             m["X_i^2"] = (np.einsum("li,li->i", x[:, :nv_k], x[:, :nv_k]) / (ns-1)).clip(1e-10)  # Variance
 
-            best_tc = -1
+            best_tc = -np.inf
             for _ in range(self.repeat):
                 self.ws[j][:nv_k] = np.random.randn(nv_k) * self.noise**2 / np.sqrt(m["X_i^2"])  # Random initialization
                 self.update_parameters(x, j)  # Update moments and normalize w
@@ -189,7 +189,7 @@ class Sieve(object):
             for i in self.alpha[j]:
                 if i < nv:
                     x[:, i] += self.moments[j]['X_i Y'][i] / (self.moments[j]["Y^2"] - self.noise**2) * ys[:, j]
-        return x
+        return x + self.mean_x
 
     def invert(self, xbar):
         # Exactly invert bar X to recover X.
