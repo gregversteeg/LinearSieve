@@ -22,18 +22,18 @@ def vis_rep(sieve, data, row_label=None, column_label=None, prefix='corex_output
     print 'Groups in groups.txt'
     labels = sieve.transform(data)
     data = np.hstack([data, labels])
-    output_groups(sieve.tcs, sieve.alpha, sieve.mis, column_label, prefix=prefix)
+    output_groups(sieve.tcs, sieve.mis, column_label, prefix=prefix)
     output_labels(labels, row_label, prefix=prefix)
     if hasattr(sieve, "tc_history"):
         plot_convergence(sieve.tc_history, prefix=prefix)
 
     print 'Pairwise plots among high TC variables in "relationships"'
-    plot_top_relationships(data, sieve.alpha, sieve.mis, column_label, labels, prefix=prefix)
+    plot_top_relationships(data, sieve.mis, column_label, labels, prefix=prefix)
 
     vis_hierarchy(sieve, column_label, prefix=prefix, max_edges=max_edges)
 
 
-def output_groups(tcs, alpha, mis, column_label, thresh=0, prefix=''):
+def output_groups(tcs, mis, column_label, thresh=0, prefix=''):
     f = safe_open(prefix + '/text_files/groups.txt', 'w+')
     h = safe_open(prefix + '/text_files/summary.txt', 'w+')
     h.write('Group, TC\n')
@@ -42,8 +42,7 @@ def output_groups(tcs, alpha, mis, column_label, thresh=0, prefix=''):
         f.write('Group num: %d, TC(X;Y_j): %0.3f\n' % (j, tcs[j]))
         h.write('%d, %0.3f\n' % (j, tcs[j]))
 
-        inds = alpha[j]
-        inds = inds[np.argsort(-mis[j][inds])]
+        inds = np.argsort(-mis[j])
         for ind in inds:
             f.write(column_label[ind] + ', %0.3f\n' % mis[j][ind])
     h.write('Total: %0.3f' % np.sum(tcs))
@@ -74,11 +73,10 @@ def plot_convergence(tc_history, prefix=''):
     return True
 
 
-def plot_top_relationships(data, alpha, mis, column_label, cont, topk=5, prefix=''):
-    m, nv = len(alpha), len(mis[0])
+def plot_top_relationships(data, mis, column_label, cont, topk=5, prefix=''):
+    m, nv = len(mis), len(mis[0])
     for j in range(m):
-        inds = alpha[j]
-        inds = inds[np.argsort(- mis[j][inds])][:topk]
+        inds = np.argsort(- mis[j])[:topk]
         if len(inds) >= 2:
             plot_rels(data[:, inds], map(lambda q: column_label[q], inds), colors=cont[:, j],
                       outfile=prefix + '/relationships/group_num=' + str(j))
@@ -147,7 +145,7 @@ def vis_hierarchy(sieve, column_label, max_edges=200, prefix=''):
             g.add_node(f(i))
             g.node[f(i)]['weight'] = 0.33 * np.clip(sieve.tcs[i - sieve.nv] / max_node_weight, 0.33, 1)
         if i >= sieve.nv:
-            g.add_weighted_edges_from([(f(j), (1, i - sieve.nv), sieve.mi_j(i - sieve.nv)[j]) for j in sieve.alpha[i - sieve.nv]])
+            g.add_weighted_edges_from([(f(j), (1, i - sieve.nv), sieve.mi_j(i - sieve.nv)[j]) for j in range(i)])
 
     # Display pruned version
     h = g.copy()  # trim(g.copy(), max_parents=max_parents, max_children=max_children)
@@ -220,7 +218,7 @@ def edge2pdf(g, filename, threshold=0, position=None, labels=None, connected=Tru
     if connected:
         touching = list(set(sum([[a, b] for a, b in g.edges()], [])))
         g = nx.subgraph(g, touching)
-        print 'non-isolated nodes,edges', len(g.nodes()), len(g.edges())
+        print 'non-isolated nodes,edges', len(list(g.nodes())), len(list(g.edges()))
     f = safe_open(filename + '.dot', 'w+')
     if directed:
         f.write("strict digraph {\n".encode('utf-8'))
@@ -292,7 +290,7 @@ def shorten(s, n=12):
 def trim(g, max_parents=False, max_children=False):
     for node in g:
         if max_parents:
-            parents = g.successors(node)
+            parents = list(g.successors(node))
             weights = [g.edge[node][parent]['weight'] for parent in parents]
             for weak_parent in np.argsort(weights)[:-max_parents]:
                 g.remove_edge(node, parents[weak_parent])
@@ -360,8 +358,6 @@ if __name__ == '__main__':
                      help="Latent factors take values 0, 1..k. Default k=2")
     group.add_option("-r", "--repeat", dest="repeat", type="int", default=1,
                      help="Number of repeats for each factor to find best. Default = 1")
-    group.add_option("-w", "--fwer", dest="fwer", type="float", default=1,
-                     help="Do hyp. testing with this FWER. Default 1 implies not hyp. testing. 0.05 is a good option.")
     parser.add_option_group(group)
 
     group = OptionGroup(parser, "Output Options")
@@ -429,10 +425,10 @@ if __name__ == '__main__':
     if verbose:
         print 'Getting Sieve results'
     if not options.regraph:
-        s = sieve.Sieve(n_hidden=options.n_hidden, verbose=verbose, fwer=options.fwer, repeat=options.repeat).fit(X)
-        cPickle.dump(s, open(options.output + '_sieve.dat', 'w'))
+        s = sieve.Sieve(n_hidden=options.n_hidden, verbose=verbose, repeat=options.repeat).fit(X)
+        cPickle.dump(s, open(options.output + '/sieve.dat', 'w'))
     else:
-        s = cPickle.load(options.output + '_sieve.dat')
+        s = cPickle.load(options.output + '/sieve.dat')
 
     # This line outputs plots showing relationships at the first layer
     vis_rep(s, X, row_label=sample_names, column_label=variable_names, prefix=options.output, max_edges=options.max_edges)

@@ -56,7 +56,7 @@ def plot_gallery(title, images, n_col=n_col, n_row=n_row):
     for i, comp in enumerate(images):
         plt.subplot(n_row, n_col, i + 1)
         vmax = max(comp.max(), -comp.min())
-        plt.imshow(comp.reshape(image_shape), cmap=plt.cm.gray,
+        plt.imshow(comp.reshape(image_shape), cmap=plt.cm.bwr,
                    interpolation='nearest',
                    vmin=-vmax, vmax=vmax)
         plt.xticks(())
@@ -70,8 +70,8 @@ def plot_gallery(title, images, n_col=n_col, n_row=n_row):
 estimators = [
     ('Linear Sieve',
         sieve.Sieve(n_hidden=n_components), False),
-    ('Eigenfaces - RandomizedPCA',
-        decomposition.RandomizedPCA(n_components=n_components, whiten=True), True),
+    ('Eigenfaces - PCA',
+        decomposition.PCA(n_components=n_components), True),
     ('Non-negative components - NMF',
         decomposition.NMF(n_components=n_components, init='nndsvda', beta=5.0,
                        tol=5e-3, sparseness='components'), False),
@@ -97,49 +97,42 @@ plot_gallery("First centered Olivetti faces", faces_centered[:n_components])
 
 ###############################################################################
 # Do the estimation and plot it
-
 for name, estimator, center in estimators:
-    print("Extracting the top %d %s..." % (n_components, name))
-    t0 = time()
-    data = faces
-    if center:
-        data = faces_centered
-    estimator.fit(data)
-    train_time = (time() - t0)
-    print("done in %0.3fs" % train_time)
-    if hasattr(estimator, 'cluster_centers_'):
-        components_ = estimator.cluster_centers_
-    elif hasattr(estimator, 'components_'):
-        components_ = estimator.components_
-    else:
-        components_ = np.array([estimator.ws[i][:n_features] for i in range(n_components)])
-    if hasattr(estimator, 'noise_variance_'):
-        plot_gallery("Pixelwise variance",
-                     estimator.noise_variance_.reshape(1, -1), n_col=1,
-                     n_row=1)
-    plot_gallery('%s - Train time %.1fs' % (name, train_time),
-                 components_[:n_components])
+  print("Extracting the top %d %s..." % (n_components, name))
+  t0 = time()
+  data = faces
+  if center:
+      data = faces_centered
+  estimator.fit(data)
+  train_time = (time() - t0)
+  print("done in %0.3fs" % train_time)
+  if hasattr(estimator, 'cluster_centers_'):
+      components_ = estimator.cluster_centers_
+  elif hasattr(estimator, 'components_'):
+      components_ = estimator.components_
+  else:
+      components_ = np.array([estimator.ws[i][:n_features] for i in range(n_components)])
+  plot_gallery('%s - Train time %.1fs' % (name, train_time),
+               components_[:n_components])
 
-    plt.savefig('faces/%s.pdf' % name)
-    plt.clf()
+  plt.savefig('faces/%s.pdf' % name)
+  plt.clf()
 
-n_components = 50
+data = faces
+n_components = 48
 out = sieve.Sieve(n_hidden=n_components)
 out.fit(data)
 components_ = np.array([out.ws[i][:n_features] for i in range(n_components)])
 plot_gallery('%s' % 'Linear Sieve Components', components_[:n_components],  n_col=10, n_row=5)
 plt.savefig('faces/big_components.pdf')
 plt.clf()
+
 xs = []
 for i in range(n_components):
     ys, xbar = out.transform(data, level=i, remainder=True)
-    print xbar.shape
     xs.append(xbar[:, :n_features])
 xs = np.array(xs)
-print 'x shape', xs.shape
-print 'alpha', out.alpha
 for l in range(30):
-    plot_gallery('Face %d' % l, xs[:, l, :], n_col=10, n_row=int(np.ceil(float(n_components)/10)))
-
+    plot_gallery('Face %d' % l, xs[:, l, :], n_col=8, n_row=6)
     plt.savefig('faces/remainder/%d.pdf' % l)
     plt.close('all')

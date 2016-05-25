@@ -5,7 +5,6 @@ Greg Ver Steeg (gregv@isi.edu), 2015.
 """
 
 import numpy as np
-from scipy.stats import t  # Student's t distribution
 
 
 class Sieve(object):
@@ -27,16 +26,15 @@ class Sieve(object):
     n_hidden : int, default = 2
         The number of latent factors / layers of the sieve to use.
 
-    max_iter : int, default = 100
+    max_iter : int, default = 5000
         The max. number of iterations for each latent factor.
+
+    repeat : int, default = 1
+        You can repeat each sieve optimization a few times and take the best result.
 
     noise : float default = 0.1
         To keep MI from being infinite, we imagine some fundamental measurement noise on Y. This number is
         arbitrary but it sets the scale of Y.
-
-    fwer : float default = 0.05
-        We want to subtract the dependence on Y for variables that are significantly correlated. We decide whether
-        there is a significan correlation by controlling the family-wise error rate using Holm-Bonferroni method.
 
     verbose : int, optional
         The verbosity level. The default, zero, means silent mode. 1 outputs TC(X;Y) as you go
@@ -49,27 +47,37 @@ class Sieve(object):
 
     Attributes
     ----------
+    ws : float array
+        The weights to calculate latent factors.
 
+    moments : list of dicts
+        The moments calculated at each level.
+
+    mean_x
+        Mean of the training data for each variable.
+
+    tc_history
+        Keeps track of convergence for each latent factor (If you used repeat, it shows repeated optimizations
+        sequentially.)
+
+    tcs
+        The total correlation explained by each factor, or the total overall (tc = sum (tcs))
 
     References
     ----------
-    [1] Greg Ver Steeg and Aram Galstyan. "The Information Sieve", 2015.
-    [2] Greg Ver Steeg, Shuyang Gao, and Aram Galstyan. "The Information Sieve for Continuous Variables" [In progress]
+    [1] Greg Ver Steeg and Aram Galstyan. "The Information Sieve", ICML 2016.
+    [2] Greg Ver Steeg, Shuyang Gao, Kyle Reing, and Aram Galstyan. "Sifting Common Information from Many Variables"
     """
 
-    def __init__(self, n_hidden=2, max_iter=50000, noise=0.1, fwer=None, repeat=1, tol=1e-7, gaussianize=False,
-                 verbose=False, seed=None, **kwargs):
+    def __init__(self, n_hidden=2, max_iter=5000, noise=0.1, repeat=1, tol=1e-8, verbose=False, seed=None, **kwargs):
         self.n_hidden = n_hidden  # Number of latent factors to learn
         self.max_iter = max_iter  # Iterations at each layer
         self.noise = noise  # Fundamental limit on noise of Y
-        self.fwer = fwer  # Optionally, we can subtract out remainder info only for "significantly" correlated vars.
         self.repeat = repeat  # For each factor, repeat with different random IC and take best solution.
         self.tol = tol  # Check for convergence
         self.verbose = verbose
         np.random.seed(seed)  # Set seed for deterministic results
         self.kwargs = kwargs
-        if gaussianize:
-            raise NotImplementedError
 
         # Initialize these when we fit on data
         self.ws = []  # List of weight arrays to get y_k = w \dot x^{k=1}
@@ -111,12 +119,14 @@ class Sieve(object):
         return self.transform(x, **kwargs)
 
     def fit(self, x):
+        """Learn n_hidden latent factors that extract as much common information from X as possible."""
         x = np.asarray(x, dtype=float)
         ns, nv = x.shape
         self.nv = nv  # Number of variables in input data
-        self.mean_x = np.ma.mean(np.ma.masked_array(x, np.isnan(x)), axis=0).data[np.newaxis, :]  # exclude missing (np.nan)
+        self.mean_x = np.ma.mean(np.ma.masked_array(x, np.isnan(x)), axis=0).data[np.newaxis,
+                      :]  # exclude missing (np.nan)
         x = np.where(np.isnan(x), self.mean_x, x)  # Impute mean for missing values
-        x = np.hstack([x - self.mean_x, np.zeros((ns, self.n_hidden))])  # Allocate space and fill in
+        x = np.hstack([(x - self.mean_x), np.zeros((ns, self.n_hidden))])  # Allocate space and fill in
         self.ws = np.zeros((self.n_hidden, nv + self.n_hidden))
 
         for j in range(self.n_hidden):
@@ -125,15 +135,16 @@ class Sieve(object):
             self.moments.append({})  # Dictionary of moments for this level
             m = self.moments[j]  # Abbreviation
             nv_k = nv + j  # Number of variables on this level
-            m["X_i^2"] = (np.einsum("li,li->i", x[:, :nv_k], x[:, :nv_k]) / (ns-1)).clip(1e-10)  # Variance
+            m["X_i^2"] = (np.einsum("li,li->i", x[:, :nv_k], x[:, :nv_k]) / (ns - 1)).clip(1e-10)  # Unbiased variance
 
             best_tc = -np.inf
             for _ in range(self.repeat):
-                self.ws[j][:nv_k] = np.random.randn(nv_k) * self.noise**2 / np.sqrt(m["X_i^2"])  # Random initialization
+                self.ws[j][:nv_k] = np.random.randn(nv_k) / np.sqrt(nv) * self.noise / np.sqrt(
+                        m["X_i^2"])  # Random initialization
                 self.update_parameters(x, j)  # Update moments and normalize w
                 for i_loop in range(self.max_iter):
-                    # self.ws[j, :nv_k] = 0.5 * (self.ws[j, :nv_k] + self.noise**2 * m["X_i Y"] / (m["X_i^2"] * m["Y^2"] - m["X_i Y"]**2))  # In one or two scenarios, this update worked better
-                    self.ws[j, :nv_k] = self.noise**2 * m["X_i Y"] / (m["X_i^2"] * m["Y^2"] - m["X_i Y"]**2)  # Update w, Eq. 9 in paper
+                    self.ws[j, :nv_k] = self.noise ** 2 * m["X_i Y"] / (
+                    m["X_i^2"] * m["Y^2"] - m["X_i Y"] ** 2)  # Update w, Eq. 9 in paper
                     self.update_parameters(x, j)  # Update moments
 
                     self.tc_history[j].append(self.tc_j(j))
@@ -143,20 +154,17 @@ class Sieve(object):
                         break  # Stop if converged
                 else:
                     if self.verbose:
-                        print "Warning: Convergence was not achieved in %d iterations. Increase max_iter." % self.max_iter
+                        print "Warning: Convergence not achieved in %d iterations. Increase max_iter." % self.max_iter
                 if self.tc_j(j) > best_tc:
                     best_w = np.copy(self.ws[j, :nv_k])
                     best_tc = self.tc_j(j)
             self.ws[j][:nv_k] = best_w
             self.update_parameters(x, j)  # Update moments and normalize w
 
-            self.alpha.append(significance_test(m["r^2"], ns, self.fwer))
             x[:, nv_k] = np.dot(self.ws[j], x.T)  # This is just Y
-            for i in self.alpha[j]:
-                x[:, i] -= m['X_i Y'][i] / (m["Y^2"] - self.noise**2) * (x[:, nv_k] + self.noise * np.random.randn(ns))  # We add the noise independently for each bar x_i
-            if len(self.alpha[-1]) <= 1 or self.tcs[-1] <= 0:
-                if self.verbose:
-                    print 'Warning: no more significant groups starting at factor %d' % j
+            for i in range(nv_k):
+                x[:, i] -= m['X_i Y'][i] / (m["Y^2"] - self.noise ** 2) * (
+                x[:, nv_k] + self.noise * np.random.randn(ns))
         return self
 
     def transform(self, x, remainder=False, level=-1):
@@ -166,13 +174,14 @@ class Sieve(object):
         ns, nv = x.shape
         assert self.nv == nv, "Incorrect number of variables in input, %d instead of %d" % (nv, self.nv)
         x = np.where(np.isnan(x), self.mean_x, x)  # Impute mean for missing values
-        x = np.hstack([x - self.mean_x, np.zeros((ns, self.n_hidden))])  # Allocate space and fill in
+        x = np.hstack([(x - self.mean_x), np.zeros((ns, self.n_hidden))])  # Allocate space and fill in
         ys = []
         for j in range(self.n_hidden):
             y = np.dot(self.ws[j], x.T)
             x[:, nv + j] = y
-            for i in self.alpha[j]:
-                x[:, i] -= self.moments[j]['X_i Y'][i] / (self.moments[j]["Y^2"] - self.noise**2) * x[:, nv + j]  # Don't add noise for transform, only in training
+            for i in range(nv + j):
+                x[:, i] -= self.moments[j]['X_i Y'][i] / (self.moments[j]["Y^2"] - self.noise ** 2) * x[:,
+                                                                                                      nv + j]  # Don't add noise for transform, only in training
             ys.append(y)
             if j == np.mod(level, self.n_hidden):
                 ys = np.vstack(ys).T
@@ -182,13 +191,13 @@ class Sieve(object):
                     return ys, x[:, :nv + j + 1]
 
     def predict(self, ys):
-        # Use y's to predict X_i
+        """Based on latent factors, Y, predict a lossy reconstruction of the original data, X."""
         nv = self.nv
         x = np.zeros((len(ys), nv))
         for j in range(self.n_hidden - 1, -1, -1):
-            for i in self.alpha[j]:
+            for i in range(nv + j):
                 if i < nv:
-                    x[:, i] += self.moments[j]['X_i Y'][i] / (self.moments[j]["Y^2"] - self.noise**2) * ys[:, j]
+                    x[:, i] += self.moments[j]['X_i Y'][i] / (self.moments[j]["Y^2"] - self.noise ** 2) * ys[:, j]
         return x + self.mean_x
 
     def invert(self, xbar):
@@ -203,27 +212,11 @@ class Sieve(object):
             print 'Warning: if w is getting huge, a perfect linear rel. is causing divergence.'
             self.ws = self.ws.clip(-1e10, 1e10)
         y = np.dot(x, self.ws[j])
-        m["Y^2"] = var(y) + self.noise**2  # <Y^2>
+        m["Y^2"] = var(y) + self.noise ** 2  # <Y^2>
         m["X_i Y"] = np.dot(x.T, y)[:nv_k] / len(y)
-        m["r^2"] = (m["X_i Y"]**2 / (m["X_i^2"] * m["Y^2"]))  # .clip(0, 1 - 1e-10)
-
-
-def significance_test(rs, n, fwer, strategy='naive'):
-    """Return the indices of significant correlations, to control the family-wise error rate (fwer)."""
-    if fwer >= 1 or fwer is None:
-        return np.arange(len(rs))
-    ts = rs * np.sqrt(float(n-2) / (1 - rs**2))  # For student t-test
-    pvals = 2 * t.sf(np.abs(ts), n - 2)
-    if strategy == 'holm-bonferroni':
-        order = np.argsort(pvals)
-        keep_m = np.sum(pvals[order] < fwer / (len(rs) - np.arange(len(rs))))
-        return order[:keep_m]  # Holm-Bonferroni
-    elif strategy == 'bonferroni':
-        return np.where(pvals < (fwer / len(rs)))[0]  # Traditional Bonferroni correction
-    else:
-        return np.where(pvals < fwer)[0]  # No multiple hypothesis correction
+        m["r^2"] = (m["X_i Y"] ** 2 / (m["X_i^2"] * m["Y^2"]))  # .clip(0, 1 - 1e-10)
 
 
 def var(y):
     # 4 times faster than numpy.std!
-    return np.dot(y, y) / (len(y)-1)
+    return np.dot(y, y) / len(y)
