@@ -39,21 +39,23 @@ Please contact me about issues.
 
 
 ###Example tests and command line interface
-In the tests folder, try:
+Try the following tests from the project directory:
 ```
-python test_weak_correlations.py
-python test_faces.py
+python tests/test_weak_correlations.py
+python tests/test_faces.py
 python vis_sieve.py tests/data/test_big5.csv --n_hidden=5 -v --no_row_names -o big5
 python vis_sieve.py tests/data/adni_blood.csv --n_hidden=30 --missing=-1e6 -v -o adni
 ```
-Each of these examples generates pairwise plots of relationships and a graph. 
+The vis_sieve automatically generates different plot.  In the relationships folder, for each latent factor you will 
+see pairwise plots of observed variables related to that factor. The color of the dot corresponds to the latent factor.
+The graphs folder will show the hierarchical relationships. The file tree_sfdp_w_splines.pdf is usually the best. 
 
 Note that missing values are imputed in vis_sieve beforehand. Using the command line API, entries that are np.nan
 are treated as missing. 
 
 You can do in-painting experiments by training a model, then mask missing values in a test set with np.nan values, 
 then generate y's for these test examples. Finally, use the .predict() method to predict the values of all x's from the 
-y's. 
+y's. Here's an example of how the python API looks.
 ```
 import sieve
 out = sieve.Sieve(n_hidden=3).fit(x_train)

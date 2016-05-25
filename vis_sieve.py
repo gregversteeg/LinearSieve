@@ -424,11 +424,14 @@ if __name__ == '__main__':
     # Run Sieve on data
     if verbose:
         print 'Getting Sieve results'
+    filename = options.output + '/sieve.dat'  # Store object here
+    if not os.path.exists(os.path.dirname(filename)):
+        os.makedirs(os.path.dirname(filename))
     if not options.regraph:
         s = sieve.Sieve(n_hidden=options.n_hidden, verbose=verbose, repeat=options.repeat).fit(X)
         cPickle.dump(s, open(options.output + '/sieve.dat', 'w'))
     else:
-        s = cPickle.load(options.output + '/sieve.dat')
+        s = cPickle.load(filename)
 
     # This line outputs plots showing relationships at the first layer
     vis_rep(s, X, row_label=sample_names, column_label=variable_names, prefix=options.output, max_edges=options.max_edges)
