@@ -58,7 +58,9 @@ then generate y's for these test examples. Finally, use the .predict() method to
 y's. Here's an example of how the python API looks.
 ```
 import sieve
-out = sieve.Sieve(n_hidden=3).fit(x_train)
+ns, nv = x_train.shape  # x_train is an array with rows for samples and columns for variables.
+out = sieve.Sieve(n_hidden=3).fit(x_train)  
 y = out.transform(x_test)  # missing values in x_test are set to np.nan
 x_predict = out.predict(y)  # all values are predicted, missing and not missing
+print out.ws[:,:nv]  # These are the weights for how each latent factor depends on each variable.
 ```

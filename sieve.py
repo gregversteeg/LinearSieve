@@ -1,6 +1,6 @@
 """The Linear Information Sieve
 
-   Copyright 2016 Greg Ver Steeg
+   Copyright 2015 Greg Ver Steeg
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -227,5 +227,5 @@ class Sieve(object):
 
 
 def var(y):
-    # 4 times faster than numpy.std!
+    # Calculate variance assuming the mean is zero. 4 times faster than numpy.std()**2.
     return np.dot(y, y) / len(y)
