@@ -25,7 +25,7 @@ The visualization capabilities in vis_sieve.py require other packages:
 * [networkx](http://networkx.github.io)  - A network manipulation library. 
 * sklearn - Already in scipy superpack and only required for visualizations. 
 * [graphviz](http://www.graphviz.org) (Optional, for compiling produced .dot files into pretty graphs. The command line 
-tools are called from vis_topic. Graphviz should be compiled with the triangulation library for best visual results).
+tools are called from vis_sieve. Graphviz should be compiled with the triangulation library for best visual results).
 
 ###Install
 
@@ -39,6 +39,8 @@ Please contact me about issues.
 
 
 ###Example tests and command line interface
+We generally try to follow the sklearn coding style using .fit(), .transform(), and .predict() methods. 
+
 Try the following tests from the project directory:
 ```
 python tests/test_weak_correlations.py
@@ -46,7 +48,7 @@ python tests/test_faces.py
 python vis_sieve.py tests/data/test_big5.csv --n_hidden=5 -v --no_row_names -o big5
 python vis_sieve.py tests/data/adni_blood.csv --n_hidden=30 --missing=-1e6 -v -o adni
 ```
-The vis_sieve automatically generates different plot.  In the relationships folder, for each latent factor you will 
+Vis_sieve.py automatically generates different plots.  In the relationships folder, for each latent factor you will 
 see pairwise plots of observed variables related to that factor. The color of the dot corresponds to the latent factor.
 The graphs folder will show the hierarchical relationships. The file tree_sfdp_w_splines.pdf is usually the best. 
 
