@@ -8,7 +8,7 @@ import numpy as np
 import sys
 
 sys.path.append('..')
-import sieve
+import linearsieve
 
 np.set_printoptions(precision=2, suppress=True, linewidth=150)
 
@@ -31,7 +31,7 @@ np.random.seed(0)
 x = np.random.random((ns, k))
 x = np.repeat(x, nr, axis=1)
 
-out = sieve.Sieve(n_hidden=k).fit(x)
+out = linearsieve.Sieve(n_hidden=k).fit(x)
 print out.ws.T
 print 'ws', np.argmax(np.abs(out.ws[:, :n]), axis=0)
 mis = np.array([mi[:n] for mi in out.mis])

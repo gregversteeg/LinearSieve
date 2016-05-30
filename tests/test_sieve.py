@@ -1,7 +1,7 @@
 import numpy as np
 import sys
 sys.path.append('..')
-import sieve
+import linearsieve
 from scipy.stats import kendalltau
 
 kwargs = {'verbose': True, 'seed': 1}
@@ -10,13 +10,13 @@ test_array_d = np.repeat([[0, 0, 0], [1, 1, 1]], 3, axis=0)
 
 
 def test_discrete():
-    out = sieve.Sieve(n_hidden=1, **kwargs)
+    out = linearsieve.Sieve(n_hidden=1, **kwargs)
     y = out.fit_transform(test_array_d)
     assert np.allclose(kendalltau(y[:, 0], test_array_d[:, 0])[0], 1)
 
 
 def test_continuous():
-    out = sieve.Sieve(n_hidden=1, **kwargs)
+    out = linearsieve.Sieve(n_hidden=1, **kwargs)
     x = test_set((5,), noise=0.001)
     y = out.fit_transform(x)
     assert np.allclose(np.abs(np.corrcoef(x[:, 0], y[:, 0])), 1)

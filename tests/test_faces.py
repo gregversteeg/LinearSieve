@@ -17,7 +17,7 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn import decomposition
 
 sys.path.append('..')
-import sieve
+import linearsieve
 
 # Display progress logs on stdout
 logging.basicConfig(level=logging.INFO,
@@ -69,7 +69,7 @@ def plot_gallery(title, images, n_col=n_col, n_row=n_row):
 # problem, and whether the transformer uses the clustering API.
 estimators = [
     ('Linear Sieve',
-        sieve.Sieve(n_hidden=n_components), False),
+     linearsieve.Sieve(n_hidden=n_components), False),
     ('Eigenfaces - PCA',
         decomposition.PCA(n_components=n_components), True),
     ('Non-negative components - NMF',
@@ -120,7 +120,7 @@ for name, estimator, center in estimators:
 
 data = faces
 n_components = 48
-out = sieve.Sieve(n_hidden=n_components)
+out = linearsieve.Sieve(n_hidden=n_components)
 out.fit(data)
 components_ = np.array([out.ws[i][:n_features] for i in range(n_components)])
 plot_gallery('%s' % 'Linear Sieve Components', components_[:n_components],  n_col=10, n_row=5)

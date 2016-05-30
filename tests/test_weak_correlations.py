@@ -4,7 +4,7 @@
 # Here we test various
 import sys
 sys.path.append('..')
-import sieve
+import linearsieve
 import numpy as np
 import vis_sieve as vs
 from scipy.stats import kendalltau
@@ -76,7 +76,7 @@ print 'group sizes', map(lambda q: q.shape[1], data_groups)
 print 'Data size:', data.shape
 
 for loop_i in range(1):
-    out = sieve.Sieve(n_hidden=n_groups, seed=seed+loop_i, verbose=verbose).fit(data)
+    out = linearsieve.Sieve(n_hidden=n_groups, seed=seed + loop_i, verbose=verbose).fit(data)
     print 'Done, scoring:'
     scores = score(signal, out.transform(data))
     print 'TC:', out.tc

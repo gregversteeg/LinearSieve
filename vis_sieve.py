@@ -321,7 +321,7 @@ if __name__ == '__main__':
     # Command line interface
     # Sample commands:
     # python vis_sieve.py tests/test_data.csv
-    import sieve as sieve
+    import linearsieve as sieve
     import csv
     import sys
     import traceback
