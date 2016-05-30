@@ -59,7 +59,7 @@ You can do in-painting experiments by training a model, then mask missing values
 then generate y's for these test examples. Finally, use the .predict() method to predict the values of all x's from the 
 y's. Here's an example of how the python API looks.
 ```
-import sieve
+import linearsieve as sieve
 ns, nv = x_train.shape  # x_train is an array with rows for samples and columns for variables.
 out = sieve.Sieve(n_hidden=3).fit(x_train)  
 y = out.transform(x_test)  # missing values in x_test are set to np.nan
