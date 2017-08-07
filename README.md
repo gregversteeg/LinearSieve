@@ -3,8 +3,7 @@
 This code is based on the following reference: 
 - [Greg Ver Steeg, Shuyang Gao, Kyle Reing, and Aram Galstyan. "Sifting Common Information from Many Variables", IJCAI 2017](https://arxiv.org/abs/1606.02307)
 
-This work in turn builds on the theoretical results here: 
-- [Greg Ver Steeg and Aram Galstyan. "The Information Sieve", ICML 2016.](http://arxiv.org/abs/1507.02284)
+This work in turn builds on the theoretical results from [Greg Ver Steeg and Aram Galstyan. "The Information Sieve", ICML 2016.](http://arxiv.org/abs/1507.02284)
 
 In turn, these results are largely superseded by an approach that learns latent factors jointly (instead of incrementally here).
 - [Greg Ver Steeg and Aram Galstyan. "Low Complexity Gaussian Latent Factor Models and a Blessing of Dimensionality", 2017](https://arxiv.org/abs/1706.03353) with [code available here](https://github.com/gregversteeg/LinearCorEx).
