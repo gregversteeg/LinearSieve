@@ -37,8 +37,7 @@ or clone the project by executing this command in your target directory:
 ```
 git clone https://github.com/gregversteeg/LinearSieve.git
 ```
-Use *git pull* to get updates. The code is under development. 
-Please contact me about issues. 
+This research code will probably not be further developed. See [Linear CorEx](https://github.com/gregversteeg/LinearCorEx) for ongoing developments. (And eventually look for tf_corex, for a more flexible framework implemented in TensorFlow.) 
 
 
 ### Example tests and command line interface
