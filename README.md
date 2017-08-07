@@ -19,7 +19,7 @@ Therefore, we now specify just one number: the maximum number of latent factors 
 learned automatically. As we add new latent factors, more and more common information is extracted until eventually
 TC(X|Y) = 0. In other words, the data is independent conditioned on Y. 
 
-###Dependencies
+### Dependencies
 
 Linear sieve requires numpy. If you use OS X, I recommend installing the [Scipy Superpack](http://fonnesbeck.github.io/ScipySuperpack/).
 
@@ -30,7 +30,7 @@ The visualization capabilities in vis_sieve.py require other packages:
 * [graphviz](http://www.graphviz.org) (Optional, for compiling produced .dot files into pretty graphs. The command line 
 tools are called from vis_sieve. Graphviz should be compiled with the triangulation library for best visual results).
 
-###Install
+### Install
 
 To install, download using [this link](https://github.com/gregversteeg/LinearSieve/archive/master.zip) 
 or clone the project by executing this command in your target directory:
@@ -41,7 +41,7 @@ Use *git pull* to get updates. The code is under development.
 Please contact me about issues. 
 
 
-###Example tests and command line interface
+### Example tests and command line interface
 We generally try to follow the sklearn coding style using .fit(), .transform(), and .predict() methods. 
 
 Try the following tests from the project directory:
