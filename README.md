@@ -7,7 +7,7 @@ This work in turn builds on the theoretical results here:
 - [Greg Ver Steeg and Aram Galstyan. "The Information Sieve", ICML 2016.](http://arxiv.org/abs/1507.02284)
 
 In turn, these results are largely superseded by an approach that learns latent factors in jointly (instead of incrementally here).
-- [Greg Ver Steeg and Aram Galstyan](https://arxiv.org/abs/1706.03353) with [code available here](https://github.com/gregversteeg/LinearCorEx).
+- [Greg Ver Steeg and Aram Galstyan. "Low Complexity Gaussian Latent Factor Models and a Blessing of Dimensionality", 2017](https://arxiv.org/abs/1706.03353) with [code available here](https://github.com/gregversteeg/LinearCorEx).
 
 While this version of the sieve makes some strong assumptions: 
 latent factors are linear functions of the data and we assume that the form of marginal distributions are Gaussian, 
